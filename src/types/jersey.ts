@@ -3,7 +3,6 @@ export interface JerseyColors {
   sleeves: string;     // Color for the sleeves
   collar: string;      // Color for the collar
   numberColor: string; // Color for the jersey number
-  numberStroke: string; // Color for the number outline
 }
 
 export interface NumberTransform {

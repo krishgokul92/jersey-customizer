@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import Jersey from './components/Jersey';
-import ColorPicker from './components/ColorPicker';
 import { JerseyColors, NumberTransform } from './types/jersey';
+import { HexColorPicker } from 'react-colorful';
 
 const AppContainer = styled.div`
   display: flex;
@@ -21,10 +21,10 @@ const CustomizationPanel = styled.div`
   padding: 32px;
   background-color: white;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+  overflow-x: visible;
   overflow-y: auto;
   z-index: 2;
 
-  /* Scrollbar styling */
   &::-webkit-scrollbar {
     width: 6px;
   }
@@ -62,11 +62,39 @@ const Title = styled.h1`
   border-bottom: 1px solid #f0f0f0;
 `;
 
-const Section = styled.div<{ noPadding?: boolean }>`
+const TabContainer = styled.div`
+  margin-bottom: 24px;
+`;
+
+const TabButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 8px;
+`;
+
+const TabButton = styled.button<{ active: boolean }>`
+  padding: 8px 16px;
+  border: none;
+  background: ${props => props.active ? '#2196f3' : '#f5f5f5'};
+  color: ${props => props.active ? 'white' : '#666'};
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${props => props.active ? '#1976d2' : '#e0e0e0'};
+  }
+`;
+
+const Section = styled.div`
   background: white;
   border-radius: 12px;
-  padding: ${props => props.noPadding ? '0' : '24px'};
+  padding: 24px;
   margin-bottom: 24px;
+  border: 1px solid #f0f0f0;
 `;
 
 const SectionTitle = styled.h2`
@@ -77,240 +105,344 @@ const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
   gap: 8px;
+`;
 
-  svg {
-    width: 18px;
-    height: 18px;
-    opacity: 0.7;
+const ColorGroup = styled.div`
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+
+  &:last-child {
+    margin-bottom: 0;
   }
 `;
 
-const ColorPickersContainer = styled.div`
+const ColorGroupTitle = styled.h3`
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 12px;
+  font-weight: 500;
+`;
+
+const CurrentColor = styled.div`
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  margin-bottom: 12px;
+
+  span {
+    flex: 1;
+    font-size: 12px;
+    color: #666;
+    font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+  }
+
+  div {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+  }
+`;
+
+const CustomColorSection = styled.div`
+  position: relative;
+  width: 100%;
+`;
+
+const ColorPickerPopup = styled.div<{ isOpen: boolean }>`
+  position: fixed;
+  margin-top: 4px;
+  width: 220px;
   background: white;
-  border-radius: 12px;
-  border: 1px solid #f0f0f0;
-  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  opacity: ${props => props.isOpen ? 1 : 0};
+  visibility: ${props => props.isOpen ? 'visible' : 'hidden'};
+  z-index: 1000;
+`;
+
+const ColorPickerContainer = styled.div`
+  .react-colorful {
+    width: 100%;
+    height: 120px;
+    border-radius: 6px;
+    
+    .react-colorful__saturation {
+      border-radius: 6px 6px 0 0;
+    }
+    
+    .react-colorful__hue {
+      height: 16px;
+      border-radius: 0 0 6px 6px;
+    }
+    
+    .react-colorful__pointer {
+      width: 16px;
+      height: 16px;
+      border-width: 1px;
+      border-color: white;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+    }
+  }
+`;
+
+const HexInput = styled.input`
+  width: 100%;
+  padding: 6px 8px;
+  margin: 8px 0;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  font-family: 'SF Mono', SFMono-Regular, ui-monospace, monospace;
+  font-size: 12px;
+  text-align: center;
+  color: #333;
+  
+  &:focus {
+    outline: none;
+    border-color: #2196f3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+  }
+`;
+
+const ColorPickerButtons = styled.div`
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+`;
+
+const ColorPickerButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
+  flex: 1;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: ${props => props.variant === 'primary' ? '#2196f3' : '#f5f5f5'};
+  color: ${props => props.variant === 'primary' ? 'white' : '#666'};
+
+  &:hover {
+    background: ${props => props.variant === 'primary' ? '#1976d2' : '#e0e0e0'};
+  }
+`;
+
+const ColorPickerTrigger = styled.button<{ color: string }>`
+  width: 100%;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background-color: ${props => props.color};
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+  transition: all 0.15s ease;
+  position: relative;
+
+  &:hover {
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15), 0 1px 4px rgba(0,0,0,0.1);
+  }
+
+  &:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
+    border-radius: 6px;
+    pointer-events: none;
+  }
 `;
 
 const NumberInput = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 
   label {
     font-weight: 500;
     color: #666;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   input {
-    padding: 12px 16px;
-    border: 2px solid #eee;
-    border-radius: 8px;
-    font-size: 18px;
-    width: 100px;
-    transition: all 0.2s ease;
+    padding: 8px 12px;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    font-size: 16px;
+    width: 80px;
+    transition: all 0.15s ease;
     
     &:focus {
       outline: none;
       border-color: #2196f3;
-      box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+      box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
     }
   }
 `;
 
-const TransformControl = styled.div`
+const PresetSwatches = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  label {
-    font-size: 14px;
-    color: #666;
-    font-weight: 500;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  input[type="range"] {
-    width: 100%;
-    height: 6px;
-    -webkit-appearance: none;
-    background: #eee;
-    border-radius: 3px;
-    outline: none;
-    
-    &::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      background: #2196f3;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      
-      &:hover {
-        transform: scale(1.1);
-        box-shadow: 0 0 0 6px rgba(33, 150, 243, 0.1);
-      }
-    }
-  }
-
-  .value {
-    font-size: 13px;
-    color: #999;
-    font-weight: 500;
-    background: #f5f5f5;
-    padding: 2px 6px;
-    border-radius: 4px;
-  }
-`;
-
-const ControlsHint = styled.div`
-  position: absolute;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 14px;
-  pointer-events: none;
-  opacity: 0.9;
-  z-index: 1;
-  backdrop-filter: blur(8px);
-  display: flex;
-  gap: 16px;
-
-  span {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-`;
-
-const ColorPickerGroup = styled.div`
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
-  
-  &:last-child {
-    border-bottom: none;
-  }
-
-  h3 {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 12px;
-    font-weight: 500;
-  }
-`;
-
-const ColorSwatches = styled.div`
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
+  gap: 4px;
   margin-bottom: 12px;
 `;
 
-const ColorSwatch = styled.button<{ color: string; isSelected: boolean }>`
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  border: 2px solid ${props => props.isSelected ? '#2196f3' : 'transparent'};
+const PresetSwatch = styled.button<{ color: string }>`
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
   background-color: ${props => props.color};
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: ${props => props.isSelected ? '0 0 0 2px rgba(33, 150, 243, 0.3)' : 'none'};
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1);
+  transition: all 0.15s ease;
 
   &:hover {
     transform: scale(1.1);
   }
 `;
 
-const CustomColorInput = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  input[type="color"] {
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    background: none;
-
-    &::-webkit-color-swatch-wrapper {
-      padding: 0;
-    }
-    
-    &::-webkit-color-swatch {
-      border: none;
-      border-radius: 8px;
-    }
-  }
-
-  input[type="text"] {
-    flex: 1;
-    padding: 8px 12px;
-    border: 2px solid #eee;
-    border-radius: 8px;
-    font-family: monospace;
-    font-size: 14px;
-    
-    &:focus {
-      outline: none;
-      border-color: #2196f3;
-    }
-  }
-`;
-
-// Icons components
-const NumberIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M9 7v13h2v-5h2v5h2V7h-2v6h-2V7H9Z"/>
-  </svg>
-);
-
-const ColorIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10a2.5 2.5 0 0 0 2.5-2.5c0-.61-.23-1.2-.64-1.67a.528.528 0 0 1-.13-.33c0-.28.22-.5.5-.5H16c3.31 0 6-2.69 6-6c0-4.96-4.49-9-10-9zm5.5 11c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5s1.5.67 1.5 1.5s-.67 1.5-1.5 1.5zm-3-4c-.83 0-1.5-.67-1.5-1.5S13.67 6 14.5 6s1.5.67 1.5 1.5S15.33 9 14.5 9zM5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S7.33 13 6.5 13S5 12.33 5 11.5zm6-4c0 .83-.67 1.5-1.5 1.5S8 8.33 8 7.5S8.67 6 9.5 6s1.5.67 1.5 1.5z"/>
-  </svg>
-);
-
-const TransformIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M22 18v-2H8V4h2L7 1L4 4h2v2H2v2h4v8c0 1.1.9 2 2 2h8v2h-2l3 3l3-3h-2v-2h4zM10 8h6v6h2V8c0-1.1-.9-2-2-2h-6v2z"/>
-  </svg>
-);
-
-// Predefined color palettes
-const colorPalettes = {
-  main: ['#1a237e', '#d32f2f', '#1b5e20', '#000000', '#ffffff', '#ffd700'],
-  accent: ['#ffffff', '#000000', '#ffd700', '#c62828', '#1565c0', '#2e7d32'],
+const presetColors = {
+  jersey: ['#1a237e', '#d32f2f', '#1b5e20', '#000000', '#ffffff', '#ffd700'],
+  text: ['#ffffff', '#000000', '#ffd700', '#c62828', '#1565c0', '#2e7d32']
 };
 
+const ColorPickerGroup = ({ 
+    label, 
+    color, 
+    onChange,
+    colorType = 'jersey'
+  }: { 
+    label: string; 
+    color: string; 
+    onChange: (color: string) => void;
+    colorType?: 'jersey' | 'text';
+  }) => {
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
+    const [tempColor, setTempColor] = useState(color);
+    const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const pickerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      setTempColor(color);
+    }, [color]);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (isPickerOpen && 
+            pickerRef.current && 
+            !pickerRef.current.contains(event.target as Node) &&
+            triggerRef.current &&
+            !triggerRef.current.contains(event.target as Node)) {
+          handleCancel();
+        }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [isPickerOpen]);
+
+    const handleOpen = () => {
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setPopupPosition({
+          top: rect.bottom + window.scrollY,
+          left: Math.min(rect.left, window.innerWidth - 230)
+        });
+      }
+      setIsPickerOpen(true);
+      setTempColor(color);
+    };
+
+    const handleCancel = () => {
+      setIsPickerOpen(false);
+      setTempColor(color);
+    };
+
+    const handleConfirm = () => {
+      onChange(tempColor);
+      setIsPickerOpen(false);
+    };
+
+    return (
+      <ColorGroup>
+        <ColorGroupTitle>{label}</ColorGroupTitle>
+        <PresetSwatches>
+          {presetColors[colorType].map((presetColor) => (
+            <PresetSwatch
+              key={presetColor}
+              color={presetColor}
+              onClick={() => onChange(presetColor)}
+            />
+          ))}
+        </PresetSwatches>
+        <CurrentColor>
+          <span>{color}</span>
+          <div style={{ backgroundColor: color }} />
+        </CurrentColor>
+
+        <CustomColorSection>
+          <ColorPickerTrigger
+            ref={triggerRef}
+            color={color}
+            onClick={handleOpen}
+          />
+          
+          <ColorPickerPopup 
+            ref={pickerRef}
+            isOpen={isPickerOpen}
+            style={{
+              top: popupPosition.top,
+              left: popupPosition.left
+            }}
+          >
+            <ColorPickerContainer>
+              <HexColorPicker color={tempColor} onChange={setTempColor} />
+              <HexInput
+                type="text"
+                value={tempColor}
+                onChange={(e) => setTempColor(e.target.value)}
+                placeholder="#000000"
+              />
+              <ColorPickerButtons>
+                <ColorPickerButton onClick={handleCancel}>
+                  Cancel
+                </ColorPickerButton>
+                <ColorPickerButton variant="primary" onClick={handleConfirm}>
+                  OK
+                </ColorPickerButton>
+              </ColorPickerButtons>
+            </ColorPickerContainer>
+          </ColorPickerPopup>
+        </CustomColorSection>
+      </ColorGroup>
+    );
+  };
+
+type TabType = 'jersey' | 'text';
+
 function App() {
+  const [activeTab, setActiveTab] = useState<TabType>('jersey');
   const [jerseyColors, setJerseyColors] = useState<JerseyColors>({
-    body: '#1a237e',      // Default blue for body
-    sleeves: '#1a237e',   // Default blue for sleeves
-    collar: '#ffffff',    // Default white for collar
-    numberColor: '#ffffff', // Default white for numbers
-    numberStroke: '#000000' // Default black for number stroke
+    body: '#1a237e',
+    sleeves: '#1a237e',
+    collar: '#ffffff',
+    numberColor: '#ffffff'
   });
 
   const [number, setNumber] = useState('23');
-
   const [transform, setTransform] = useState<NumberTransform>({
     position: [0, 0.5, 1.8],
     rotation: 0,
@@ -329,182 +461,88 @@ function App() {
     setNumber(value);
   };
 
-  const handleTransformChange = (
-    type: 'position' | 'rotation' | 'scale',
-    value: number,
-    index?: number
-  ) => {
-    setTransform(prev => ({
-      ...prev,
-      [type]: type === 'position' 
-        ? prev.position.map((v, i) => i === index ? value : v)
-        : value
-    }));
-  };
-
-  const ColorPickerSection = ({ 
-    label, 
-    color, 
-    onChange, 
-    palette = colorPalettes.main 
-  }: { 
-    label: string; 
-    color: string; 
-    onChange: (color: string) => void; 
-    palette?: string[]; 
-  }) => (
-    <ColorPickerGroup>
-      <h3>{label}</h3>
-      <ColorSwatches>
-        {palette.map((swatch) => (
-          <ColorSwatch
-            key={swatch}
-            color={swatch}
-            isSelected={color === swatch}
-            onClick={() => onChange(swatch)}
-          />
-        ))}
-      </ColorSwatches>
-      <CustomColorInput>
-        <input
-          type="color"
-          value={color}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <input
-          type="text"
-          value={color}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="#000000"
-        />
-      </CustomColorInput>
-    </ColorPickerGroup>
-  );
-
   return (
     <AppContainer>
       <CustomizationPanel>
         <Title>Jersey Customizer</Title>
         
-        <Section>
-          <SectionTitle>
-            <NumberIcon />
-            Jersey Number
-          </SectionTitle>
-          <NumberInput>
-            <label htmlFor="number">Enter Number (0-99)</label>
-            <input
-              id="number"
-              type="text"
-              value={number}
-              onChange={handleNumberChange}
-              placeholder="00"
-              maxLength={2}
-            />
-          </NumberInput>
-        </Section>
+        <TabContainer>
+          <TabButtons>
+            <TabButton 
+              active={activeTab === 'jersey'} 
+              onClick={() => setActiveTab('jersey')}
+            >
+              Jersey Colors
+            </TabButton>
+            <TabButton 
+              active={activeTab === 'text'} 
+              onClick={() => setActiveTab('text')}
+            >
+              Number & Position
+            </TabButton>
+          </TabButtons>
 
-        <Section noPadding>
-          <SectionTitle style={{ margin: '0 24px 20px' }}>
-            <ColorIcon />
-            Jersey Colors
-          </SectionTitle>
-          <ColorPickersContainer>
-            <ColorPickerSection
-              label="Body Color"
-              color={jerseyColors.body}
-              onChange={handleColorChange('body')}
-            />
-            <ColorPickerSection
-              label="Sleeves Color"
-              color={jerseyColors.sleeves}
-              onChange={handleColorChange('sleeves')}
-            />
-            <ColorPickerSection
-              label="Collar Color"
-              color={jerseyColors.collar}
-              onChange={handleColorChange('collar')}
-              palette={colorPalettes.accent}
-            />
-            <ColorPickerSection
-              label="Number Color"
-              color={jerseyColors.numberColor}
-              onChange={handleColorChange('numberColor')}
-              palette={colorPalettes.accent}
-            />
-            <ColorPickerSection
-              label="Number Outline"
-              color={jerseyColors.numberStroke}
-              onChange={handleColorChange('numberStroke')}
-              palette={colorPalettes.accent}
-            />
-          </ColorPickersContainer>
-        </Section>
-
-        <Section>
-          <SectionTitle>
-            <TransformIcon />
-            Number Transform
-          </SectionTitle>
-          
-          {['x', 'y', 'z'].map((axis, index) => (
-            <TransformControl key={`position-${axis}`}>
-              <label>
-                Position {axis.toUpperCase()}
-                <span className="value">{transform.position[index].toFixed(2)}</span>
-              </label>
-              <input
-                type="range"
-                min={-3}
-                max={3}
-                step={0.1}
-                value={transform.position[index]}
-                onChange={(e) => handleTransformChange('position', parseFloat(e.target.value), index)}
+          {activeTab === 'jersey' && (
+            <Section>
+              <SectionTitle>Jersey Colors</SectionTitle>
+              <ColorPickerGroup
+                label="Body Color"
+                color={jerseyColors.body}
+                onChange={handleColorChange('body')}
+                colorType="jersey"
               />
-            </TransformControl>
-          ))}
+              <ColorPickerGroup
+                label="Sleeves Color"
+                color={jerseyColors.sleeves}
+                onChange={handleColorChange('sleeves')}
+                colorType="jersey"
+              />
+              <ColorPickerGroup
+                label="Collar Color"
+                color={jerseyColors.collar}
+                onChange={handleColorChange('collar')}
+                colorType="text"
+              />
+            </Section>
+          )}
 
-          <TransformControl>
-            <label>
-              Rotation
-              <span className="value">{transform.rotation.toFixed(2)}</span>
-            </label>
-            <input
-              type="range"
-              min={-Math.PI}
-              max={Math.PI}
-              step={0.1}
-              value={transform.rotation}
-              onChange={(e) => handleTransformChange('rotation', parseFloat(e.target.value))}
-            />
-          </TransformControl>
+          {activeTab === 'text' && (
+            <>
+              <Section>
+                <SectionTitle>Jersey Number</SectionTitle>
+                <NumberInput>
+                  <label htmlFor="number">Enter Number (0-99)</label>
+                  <input
+                    id="number"
+                    type="text"
+                    value={number}
+                    onChange={handleNumberChange}
+                    placeholder="00"
+                    maxLength={2}
+                  />
+                </NumberInput>
+              </Section>
 
-          <TransformControl>
-            <label>
-              Scale
-              <span className="value">{transform.scale.toFixed(2)}</span>
-            </label>
-            <input
-              type="range"
-              min={0.1}
-              max={4}
-              step={0.1}
-              value={transform.scale}
-              onChange={(e) => handleTransformChange('scale', parseFloat(e.target.value))}
-            />
-          </TransformControl>
-        </Section>
+              <Section>
+                <SectionTitle>Number Color</SectionTitle>
+                <ColorPickerGroup
+                  label="Number Color"
+                  color={jerseyColors.numberColor}
+                  onChange={handleColorChange('numberColor')}
+                  colorType="text"
+                />
+              </Section>
+            </>
+          )}
+        </TabContainer>
       </CustomizationPanel>
+
       <PreviewPanel>
         <Jersey
           colors={jerseyColors}
           number={number}
           transform={transform}
         />
-        <ControlsHint>
-          <span>🖱️ Click and drag to rotate</span>
-          <span>⚙️ Use controls to customize</span>
-        </ControlsHint>
       </PreviewPanel>
     </AppContainer>
   );

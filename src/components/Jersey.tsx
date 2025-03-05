@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, PerspectiveCamera, Decal, useGLTF } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera, Decal, useGLTF, GizmoHelper, GizmoViewport } from '@react-three/drei';
 import { JerseyColors, NumberTransform } from '../types/jersey';
 import * as THREE from 'three';
 
@@ -16,6 +16,45 @@ const JerseyContainer = styled.div`
   height: 100%;
   background: #f8f9fa;
   border-radius: 12px;
+  position: relative;
+`;
+
+const OrbitControlsContainer = styled.div`
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  z-index: 10;
+`;
+
+const ControlButton = styled.button`
+  padding: 8px;
+  border: none;
+  background: #f0f0f0;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #e0e0e0;
+    color: #333;
+  }
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
 `;
 
 // Debug helper component to show bounding box
@@ -129,37 +168,24 @@ function JerseyModel({ colors, number, transform }: { colors: JerseyColors; numb
     const context = canvasRef.current.getContext('2d');
     if (!context) return;
 
-    // Clear canvas with transparent background
+    // Clear canvas and draw number
     context.clearRect(0, 0, 512, 512);
-    
-    // Add stroke to number
     context.font = 'bold 280px Arial';
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    
-    // Comment out stroke functionality
-    // context.strokeStyle = colors.numberStroke;
-    // context.lineWidth = 8;
-    // context.strokeText(number || '00', 256, 256);
-    
-    // Draw number
     context.fillStyle = colors.numberColor;
     context.fillText(number || '00', 256, 256);
 
     // Create or update texture
     if (!textureRef.current) {
-      const texture = new THREE.CanvasTexture(canvasRef.current);
-      texture.anisotropy = 16;
-      texture.premultiplyAlpha = true;
-      texture.format = THREE.RGBAFormat;
-      textureRef.current = texture;
-    }
-    
-    // Always update the texture
-    if (textureRef.current) {
+      textureRef.current = new THREE.CanvasTexture(canvasRef.current);
+      textureRef.current.anisotropy = 16;
+      textureRef.current.premultiplyAlpha = true;
+      textureRef.current.format = THREE.RGBAFormat;
+    } else {
       textureRef.current.needsUpdate = true;
     }
-  }, [colors.numberColor, colors.numberStroke, number]);
+  }, [colors.numberColor, number]);
 
   // Calculate surface normal based on position
   const calculateSurfaceNormal = (position: [number, number, number]): [number, number, number] => {
@@ -206,11 +232,14 @@ function JerseyModel({ colors, number, transform }: { colors: JerseyColors; numb
 }
 
 const Jersey: React.FC<JerseyProps> = ({ colors, number, transform }) => {
+  const orbitControlsRef = useRef<any>(null);
+
   return (
     <JerseyContainer>
       <Canvas shadows>
         <PerspectiveCamera makeDefault position={[0, 0, 2]} fov={25} />
         <OrbitControls
+          ref={orbitControlsRef}
           enablePan={false}
           enableZoom={true}
           minDistance={2}
@@ -220,6 +249,7 @@ const Jersey: React.FC<JerseyProps> = ({ colors, number, transform }) => {
           maxPolarAngle={Math.PI}
           minAzimuthAngle={-Infinity}
           maxAzimuthAngle={Infinity}
+          makeDefault
         />
         
         {/* Softer lighting setup for matte materials */}
@@ -243,6 +273,18 @@ const Jersey: React.FC<JerseyProps> = ({ colors, number, transform }) => {
         <group position={[0, 0, 0]}>
           <JerseyModel colors={colors} number={number} transform={transform} />
         </group>
+
+        {/* Orbit Gizmo */}
+        <GizmoHelper
+          alignment="bottom-right"
+          margin={[80, 80]}
+          onUpdate={() => orbitControlsRef.current?.update()}
+        >
+          <GizmoViewport 
+            axisColors={['#f73', '#0af', '#0f3']} 
+            labelColor="black"
+          />
+        </GizmoHelper>
       </Canvas>
     </JerseyContainer>
   );
