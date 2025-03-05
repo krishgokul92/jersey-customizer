@@ -1,7 +1,9 @@
 export interface JerseyColors {
-  main: string;
-  secondary: string;
-  numberColor: string;
+  body: string;        // Color for the jersey body
+  sleeves: string;     // Color for the sleeves
+  collar: string;      // Color for the collar
+  numberColor: string; // Color for the jersey number
+  numberStroke: string; // Color for the number outline
 }
 
 export interface NumberTransform {

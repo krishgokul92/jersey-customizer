@@ -198,6 +198,83 @@ const ControlsHint = styled.div`
   }
 `;
 
+const ColorPickerGroup = styled.div`
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  
+  &:last-child {
+    border-bottom: none;
+  }
+
+  h3 {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+`;
+
+const ColorSwatches = styled.div`
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+`;
+
+const ColorSwatch = styled.button<{ color: string; isSelected: boolean }>`
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 2px solid ${props => props.isSelected ? '#2196f3' : 'transparent'};
+  background-color: ${props => props.color};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: ${props => props.isSelected ? '0 0 0 2px rgba(33, 150, 243, 0.3)' : 'none'};
+
+  &:hover {
+    transform: scale(1.1);
+  }
+`;
+
+const CustomColorInput = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  input[type="color"] {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: none;
+
+    &::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+    
+    &::-webkit-color-swatch {
+      border: none;
+      border-radius: 8px;
+    }
+  }
+
+  input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 14px;
+    
+    &:focus {
+      outline: none;
+      border-color: #2196f3;
+    }
+  }
+`;
+
 // Icons components
 const NumberIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
@@ -217,11 +294,19 @@ const TransformIcon = () => (
   </svg>
 );
 
+// Predefined color palettes
+const colorPalettes = {
+  main: ['#1a237e', '#d32f2f', '#1b5e20', '#000000', '#ffffff', '#ffd700'],
+  accent: ['#ffffff', '#000000', '#ffd700', '#c62828', '#1565c0', '#2e7d32'],
+};
+
 function App() {
   const [jerseyColors, setJerseyColors] = useState<JerseyColors>({
-    main: '#1a237e',
-    secondary: '#ffffff',
-    numberColor: '#ffffff'
+    body: '#1a237e',      // Default blue for body
+    sleeves: '#1a237e',   // Default blue for sleeves
+    collar: '#ffffff',    // Default white for collar
+    numberColor: '#ffffff', // Default white for numbers
+    numberStroke: '#000000' // Default black for number stroke
   });
 
   const [number, setNumber] = useState('23');
@@ -257,6 +342,45 @@ function App() {
     }));
   };
 
+  const ColorPickerSection = ({ 
+    label, 
+    color, 
+    onChange, 
+    palette = colorPalettes.main 
+  }: { 
+    label: string; 
+    color: string; 
+    onChange: (color: string) => void; 
+    palette?: string[]; 
+  }) => (
+    <ColorPickerGroup>
+      <h3>{label}</h3>
+      <ColorSwatches>
+        {palette.map((swatch) => (
+          <ColorSwatch
+            key={swatch}
+            color={swatch}
+            isSelected={color === swatch}
+            onClick={() => onChange(swatch)}
+          />
+        ))}
+      </ColorSwatches>
+      <CustomColorInput>
+        <input
+          type="color"
+          value={color}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <input
+          type="text"
+          value={color}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#000000"
+        />
+      </CustomColorInput>
+    </ColorPickerGroup>
+  );
+
   return (
     <AppContainer>
       <CustomizationPanel>
@@ -283,23 +407,36 @@ function App() {
         <Section noPadding>
           <SectionTitle style={{ margin: '0 24px 20px' }}>
             <ColorIcon />
-            Colors
+            Jersey Colors
           </SectionTitle>
           <ColorPickersContainer>
-            <ColorPicker
-              label="Main Color"
-              color={jerseyColors.main}
-              onChange={handleColorChange('main')}
+            <ColorPickerSection
+              label="Body Color"
+              color={jerseyColors.body}
+              onChange={handleColorChange('body')}
             />
-            <ColorPicker
-              label="Secondary Color"
-              color={jerseyColors.secondary}
-              onChange={handleColorChange('secondary')}
+            <ColorPickerSection
+              label="Sleeves Color"
+              color={jerseyColors.sleeves}
+              onChange={handleColorChange('sleeves')}
             />
-            <ColorPicker
+            <ColorPickerSection
+              label="Collar Color"
+              color={jerseyColors.collar}
+              onChange={handleColorChange('collar')}
+              palette={colorPalettes.accent}
+            />
+            <ColorPickerSection
               label="Number Color"
               color={jerseyColors.numberColor}
               onChange={handleColorChange('numberColor')}
+              palette={colorPalettes.accent}
+            />
+            <ColorPickerSection
+              label="Number Outline"
+              color={jerseyColors.numberStroke}
+              onChange={handleColorChange('numberStroke')}
+              palette={colorPalettes.accent}
             />
           </ColorPickersContainer>
         </Section>
@@ -359,11 +496,14 @@ function App() {
         </Section>
       </CustomizationPanel>
       <PreviewPanel>
-        <Jersey colors={jerseyColors} number={number} transform={transform} />
+        <Jersey
+          colors={jerseyColors}
+          number={number}
+          transform={transform}
+        />
         <ControlsHint>
-          <span>🖱️ Left Click: Rotate</span>
-          <span>👆 Right Click: Pan</span>
-          <span>⚡ Scroll: Zoom</span>
+          <span>🖱️ Click and drag to rotate</span>
+          <span>⚙️ Use controls to customize</span>
         </ControlsHint>
       </PreviewPanel>
     </AppContainer>
