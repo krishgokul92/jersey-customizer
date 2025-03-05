@@ -1,0 +1,92 @@
+/* ColorPicker Component */
+.colorPicker {
+  margin-bottom: 24px;
+}
+
+.colorPicker label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #666;
+  font-size: 13px;
+}
+
+.colorPicker :global(.react-colorful) {
+  width: 100%;
+  height: 120px;
+  border-radius: 6px;
+}
+
+.colorPicker :global(.react-colorful__saturation) {
+  border-radius: 6px 6px 0 0;
+}
+
+.colorPicker :global(.react-colorful__hue) {
+  height: 16px;
+  border-radius: 0 0 6px 6px;
+}
+
+.colorPicker :global(.react-colorful__pointer) {
+  width: 16px;
+  height: 16px;
+  border-width: 1px;
+  border-color: white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Input Groups */
+.inputGroup {
+  margin-bottom: 16px;
+}
+
+.inputGroup label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #666;
+  font-size: 13px;
+}
+
+.inputGroup input[type="text"] {
+  padding: 8px 12px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  font-size: 16px;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+
+.inputGroup input[type="text"]:focus {
+  outline: none;
+  border-color: #2196f3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.inputGroup input[type="range"] {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #e0e0e0;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.inputGroup input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #2196f3;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.inputGroup input[type="range"]:hover::-webkit-slider-thumb {
+  background: #1976d2;
+}
+
+.inputGroup input[type="checkbox"] {
+  margin-left: 8px;
+  cursor: pointer;
+} 
